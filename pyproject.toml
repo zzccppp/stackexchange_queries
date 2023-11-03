@@ -1,0 +1,14 @@
+[project]
+name = "DSA5104Proj_StackExchange"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "ZZDirty", email = "muztaga2@gmail.com"},
+]
+dependencies = [
+    "pymongo[srv]>=4.5.0",
+    "tqdm>=4.66.1",
+]
+requires-python = ">=3.9,<3.11"
+readme = "README.md"
+license = {text = "MIT"}
