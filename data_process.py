@@ -185,6 +185,29 @@ class PostLinkXMLHandler(xml.sax.ContentHandler):
             self.current_post_link = {}
 
 
+class VoteXMLHandler(xml.sax.ContentHandler):
+    def __init__(self):
+        super().__init__()
+        self.votes = []
+        self.current_vote = {}
+
+    def startElement(self, tag: str, attributes):
+        if tag == "row":
+            self.current_vote = {
+                "VoteId": int(attributes["Id"]),
+                "PostId": int(attributes["PostId"]),
+                "VoteTypeId": int(attributes["VoteTypeId"]),
+                "UserId": parse_int(attributes.get("UserId", "")),
+                "CreationDate": parse_datetime(attributes["CreationDate"]),
+                "BountyAmount": parse_int(attributes.get("BountyAmount", "")),
+            }
+
+    def endElement(self, tag: str):
+        if tag == "row":
+            self.votes.append(self.current_vote)
+            self.current_vote = {}
+
+
 def user_xml2json(xml_path, json_path):
     parser = xml.sax.make_parser()
     handler = UserXMLHandler()
@@ -337,18 +360,39 @@ def postlink2mongo(
     if operations:
         collection.bulk_write(operations, ordered=False)
 
+def vote2mongo(xml_path, db_name, collection_name, conn="mongodb://localhost:27017/"):
+    parser = xml.sax.make_parser()
+    handler = VoteXMLHandler()
+    parser.setContentHandler(handler)
+
+    with open(xml_path, "r", encoding="utf-8") as file:
+        parser.parse(file)
+
+    client = MongoClient(conn)
+    db = client[db_name]
+    collection = db[collection_name]
+
+    collection.insert_many(handler.votes)
+
+    collection.create_index("VoteId")
+    collection.create_index("PostId")
+    collection.create_index("UserId")
+    collection.create_index("CreationDate")
+    collection.create_index("BountyAmount")
 
 if __name__ == "__main__":
-    print("Parsing Users.xml...")
-    user2mongo("archive/cs/Users.xml", "stackexchange_cs", "Users")
-    print("Parsing Badges.xml...")
-    badge2mongo("archive/cs/Badges.xml", "stackexchange_cs", "Users")
-    print("Parsing Posts.xml...")
-    post2mongo("archive/cs/Posts.xml", "stackexchange_cs", "Posts")
-    print("Parsing Comment.xml...")
-    comment2mongo("archive/cs/Comments.xml", "stackexchange_cs", "Posts")
-    print("Parsing Tags.xml...")
-    tag2mongo("archive/cs/Tags.xml", "stackexchange_cs", "Tags")
-    print("Parsing PostLinks.xml...")
-    postlink2mongo("archive/cs/PostLinks.xml", "stackexchange_cs", "Posts")
+    # print("Parsing Users.xml...")
+    # user2mongo("archive/cs/Users.xml", "stackexchange_cs", "Users")
+    # print("Parsing Badges.xml...")
+    # badge2mongo("archive/cs/Badges.xml", "stackexchange_cs", "Users")
+    # print("Parsing Posts.xml...")
+    # post2mongo("archive/cs/Posts.xml", "stackexchange_cs", "Posts")
+    # print("Parsing Comment.xml...")
+    # comment2mongo("archive/cs/Comments.xml", "stackexchange_cs", "Posts")
+    # print("Parsing Tags.xml...")
+    # tag2mongo("archive/cs/Tags.xml", "stackexchange_cs", "Tags")
+    # print("Parsing PostLinks.xml...")
+    # postlink2mongo("archive/cs/PostLinks.xml", "stackexchange_cs", "Posts")
+    print("Parsing Votes.xml...")
+    vote2mongo("archive/cs/Votes.xml", "stackexchange_cs", "Votes")
     pass
